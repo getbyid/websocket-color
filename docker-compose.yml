@@ -1,0 +1,38 @@
+services:
+  api1:
+    image: local/ws_api:1
+    build: .
+    volumes:
+      - ./app:/api/app
+    environment:
+      - HOST=api1
+      - PORT=5001
+    ports:
+      - 5001:5001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  api2:
+    image: local/ws_api:1
+    build: .
+    volumes:
+      - ./app:/api/app
+    environment:
+      - HOST=api2
+      - PORT=5002
+    ports:
+      - 5002:5002
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  nginx:
+    image: nginx:1.24-alpine
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/api.conf
+    ports:
+      - 8000:80
+      - 8010:8010
+    depends_on:
+      - api1
+      - api2

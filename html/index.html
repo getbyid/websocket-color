@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>WebSocket client</title>
+</head>
+
+<script>
+  const ws = new WebSocket('ws://localhost:8010/')
+
+  ws.onopen = function (event) {
+    console.log('WebSocket open', event)
+  }
+
+  ws.onmessage = function (event) {
+    const { data } = event
+    console.log('WebSocket message', data)
+    document.body.style.backgroundColor = data
+  }
+
+  ws.onerror = function (error) {
+    console.log('WebSocket error', error)
+  }
+
+  function send() {
+    ws.send(document.getElementById("color").value)
+    return false
+  }
+</script>
+
+<body>
+  <p><input id="color" type="color"></input></p>
+  <p><button onclick="send()">Send</button></p>
+</body>
+
+</html>
