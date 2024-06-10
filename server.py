@@ -1,9 +1,10 @@
 import asyncio
 import logging
-import signal
 from os import getenv
+from typing import Annotated
 
-import websockets
+import uvicorn
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from redis import asyncio as aredis
 
 
@@ -11,13 +12,14 @@ class StateManager:
     def __init__(self, name, state):
         self.name = name
         self.state = state
-        self._clients = set()
+        self._clients: set[WebSocket] = set()
         self._logger = logging.getLogger("state")
 
-    def add(self, client):
+    async def add(self, client: WebSocket):
+        await client.accept()
         self._clients.add(client)
 
-    def remove(self, client):
+    def remove(self, client: WebSocket):
         self._clients.remove(client)
 
     async def _pubsub_listener(self) -> None:
@@ -29,7 +31,9 @@ class StateManager:
                     state = message["data"].decode()
                     self.state = state
                     if self._clients:
-                        websockets.broadcast(self._clients, state)
+                        # websockets.broadcast(self._clients, state)
+                        for client in self._clients:
+                            await client.send_text(state)
                 except Exception as e:
                     self._logger.exception(e)
 
@@ -44,42 +48,39 @@ class StateManager:
         await self._conn.aclose()
         self._listener.cancel()
 
-    async def publish(self, state) -> None:
+    async def publish(self, message) -> None:
         self._logger.debug(self._listener)
-        delivered = await self._conn.publish(self.name, state)
-        self._logger.info("%s delivered: %s", delivered, state)
+        delivered = await self._conn.publish(self.name, message)
+        self._logger.info("message=%s delivered=%s", message, delivered)
 
 
-manager = StateManager("color", "#abcdef")
-
-
-async def ws_handler(websocket):
-    manager.add(websocket)
-    try:
-        await websocket.send(manager.state)
-        async for message in websocket:
-            await manager.publish(message)
-    finally:
-        manager.remove(websocket)
-
-
-async def main():
-    loop = asyncio.get_running_loop()
-    stop = loop.create_future()
-    loop.add_signal_handler(signal.SIGTERM, stop.set_result, None)
-
+async def get_manager():
+    manager = StateManager("color", "#abcdef")
     await manager.setup(getenv("REDIS", "redis://localhost/0"))
-
-    async with websockets.serve(
-        ws_handler,
-        host=getenv("HOST", "localhost"),
-        port=int(getenv("PORT", "5000")),
-        logger=logging.getLogger("ws"),
-    ):
-        await stop
-
+    yield manager
     await manager.teardown()
 
 
-logging.basicConfig(level=logging.DEBUG if getenv("DEBUG") else logging.INFO)
-asyncio.run(main())
+app = FastAPI(debug=bool(getenv("DEBUG")), docs_url=None, redoc_url=None)
+
+
+@app.websocket("/")
+async def websocket_color(
+    client: WebSocket,
+    manager: Annotated[StateManager, Depends(get_manager)],
+):
+    await manager.add(client)
+    try:
+        await client.send_text(manager.state)
+        while True:
+            text = await client.receive_text()
+            await manager.publish(text)
+    except WebSocketDisconnect:
+        manager.remove(client)
+    except Exception as e:
+        logging.exception(e)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG if getenv("DEBUG") else logging.INFO)
+    uvicorn.run(app, host=getenv("HOST", "localhost"), port=int(getenv("PORT", "5000")))

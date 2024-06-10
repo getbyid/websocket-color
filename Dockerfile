@@ -5,7 +5,8 @@ RUN python3 -m venv /opt/venv
 # Make sure we use the virtualenv
 ENV PATH="/opt/venv/bin:$PATH"
 
-RUN python3 -m pip install --upgrade pip; pip3 install websockets redis[hiredis]
+COPY requirements.txt .
+RUN python3 -m pip install --upgrade pip; pip3 install -r requirements.txt
 
 FROM python:3.11-slim
 COPY --from=compile-image /opt/venv /opt/venv

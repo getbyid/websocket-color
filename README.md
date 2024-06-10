@@ -7,6 +7,10 @@
 * <https://pypi.org/project/websockets/>
 * <https://pypi.org/project/redis/>
 
+~~~sh
+pip3 install fastapi-slim uvicorn websockets redis[hiredis]
+~~~
+
 Чтобы точнее смоделировать prod-окружение применяется `docker compose`.
 
 Иконку можно скопировать из документации:
@@ -26,3 +30,4 @@ wget -P html 'https://websockets.readthedocs.io/en/stable/_static/favicon.ico'
 
 * v1 - 2 воркера, нет общего состояния, поэтому цвет меняется только во вкладках с общим воркером.
 * v2 - синхронизация состояния воркеров через канал (PUB/SUB) в Redis
+* v3 - библиотека websockets обёрнута ASGI-приложением и работает через Uvicorn
