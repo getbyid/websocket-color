@@ -2,7 +2,10 @@
 
 Модель для отладки взаимодействия через WebSocket множества клиентов и нескольких воркеров на сервере.
 
-В основе проекта - Python-библиотека <https://pypi.org/project/websockets/>
+Применяются Python-библиотеки:
+
+* <https://pypi.org/project/websockets/>
+* <https://pypi.org/project/redis/>
 
 Чтобы точнее смоделировать prod-окружение применяется `docker compose`.
 
@@ -22,4 +25,4 @@ wget -P html 'https://websockets.readthedocs.io/en/stable/_static/favicon.ico'
 Версии проекта:
 
 * v1 - 2 воркера, нет общего состояния, поэтому цвет меняется только во вкладках с общим воркером.
-* v2 - TODO: добавить общее состояние через redis
+* v2 - синхронизация состояния воркеров через канал (PUB/SUB) в Redis

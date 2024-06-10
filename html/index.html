@@ -16,6 +16,7 @@
     const { data } = event
     console.log('WebSocket message', data)
     document.body.style.backgroundColor = data
+    document.title = data
   }
 
   ws.onerror = function (error) {
